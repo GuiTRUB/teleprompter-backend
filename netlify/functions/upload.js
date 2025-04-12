@@ -1,33 +1,85 @@
-part.on("end", async () => {
-  try {
-    const docxBuffer = Buffer.concat(bufferChunks);
-    const result = await mammoth.convertToHtml({ buffer: docxBuffer });
-    
-    // 🪵 LOG DO HTML CONVERTIDO:
-    console.log("📄 HTML convertido pelo Mammoth:");
-    console.log(result.value);
+const fs = require("fs");
+const multiparty = require("multiparty");
+const mammoth = require("mammoth");
+const stream = require("stream");
 
-    const html = result.value;
-
-    if (!html || html.trim() === "") {
-      return resolve({
-        statusCode: 200,
-        body: JSON.stringify({ message: "Letra vazia após conversão." }),
-      });
-    }
-
-    const finalPath = "/tmp/latest.html";
-    fs.writeFileSync(finalPath, html, "utf8");
-
-    return resolve({
-      statusCode: 200,
-      body: JSON.stringify({ message: "Letra salva com sucesso." }),
-    });
-  } catch (err) {
-    console.error("❌ Erro ao processar .docx:", err);
-    return resolve({
-      statusCode: 500,
-      body: `Erro ao processar: ${err.message}`,
-    });
+exports.handler = async (event) => {
+  if (event.httpMethod !== "POST") {
+    return { statusCode: 405, body: "Method Not Allowed" };
   }
-});
+
+  return new Promise((resolve, reject) => {
+    const form = new multiparty.Form();
+    const bufferChunks = [];
+
+    form.on("part", (part) => {
+      if (!part.filename) {
+        part.resume();
+        return;
+      }
+
+      part.on("data", (chunk) => {
+        bufferChunks.push(chunk);
+      });
+
+      part.on("end", async () => {
+        try {
+          const docxBuffer = Buffer.concat(bufferChunks);
+          const result = await mammoth.convertToHtml({ buffer: docxBuffer });
+
+          console.log("📄 HTML convertido:");
+          console.log(result.value);
+
+          const html = result.value;
+
+          if (!html || html.trim() === "") {
+            return resolve({
+              statusCode: 200,
+              body: JSON.stringify({ message: "Letra vazia após conversão." }),
+            });
+          }
+
+          const finalPath = "/tmp/latest.html";
+          fs.writeFileSync(finalPath, html, "utf8");
+
+          return resolve({
+            statusCode: 200,
+            body: JSON.stringify({ message: "Letra salva com sucesso." }),
+          });
+        } catch (err) {
+          console.error("❌ Erro ao processar .docx:", err);
+          return resolve({
+            statusCode: 500,
+            body: `Erro ao processar: ${err.message}`,
+          });
+        }
+      });
+    });
+
+    form.on("error", (err) => {
+      console.error("Erro no multiparty:", err);
+      resolve({
+        statusCode: 500,
+        body: "Erro no processamento do formulário.",
+      });
+    });
+
+    const buffer = Buffer.from(event.body, event.isBase64Encoded ? "base64" : "utf8");
+    const readable = new stream.Readable();
+    readable._read = () => {};
+    readable.push(buffer);
+    readable.push(null);
+
+    const rawHeaders = Object.entries(event.headers || {}).reduce((acc, [key, val]) => {
+      acc[key.toLowerCase()] = val;
+      return acc;
+    }, {});
+
+    const headers = {
+      "content-type": rawHeaders["content-type"],
+      "content-length": rawHeaders["content-length"] || buffer.length.toString(),
+    };
+
+    form.parse(readable, headers);
+  });
+};
