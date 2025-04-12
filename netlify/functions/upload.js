@@ -1,33 +1,33 @@
-
-const mammoth = require("mammoth");
-
-exports.handler = async (event) => {
-  if (event.httpMethod !== "POST") {
-    return { statusCode: 405, body: "Method Not Allowed" };
-  }
-
+part.on("end", async () => {
   try {
-    const buffer = Buffer.from(event.body, event.isBase64Encoded ? "base64" : "utf8");
-    const result = await mammoth.convertToHtml({ buffer });
+    const docxBuffer = Buffer.concat(bufferChunks);
+    const result = await mammoth.convertToHtml({ buffer: docxBuffer });
+    
+    // 🪵 LOG DO HTML CONVERTIDO:
+    console.log("📄 HTML convertido pelo Mammoth:");
+    console.log(result.value);
 
-    if (!result.value || result.value.trim() === "") {
-      return {
+    const html = result.value;
+
+    if (!html || html.trim() === "") {
+      return resolve({
         statusCode: 200,
         body: JSON.stringify({ message: "Letra vazia após conversão." }),
-      };
+      });
     }
 
-    return {
+    const finalPath = "/tmp/latest.html";
+    fs.writeFileSync(finalPath, html, "utf8");
+
+    return resolve({
       statusCode: 200,
-      body: JSON.stringify({
-        message: "Letra processada com sucesso.",
-        html: result.value,
-      }),
-    };
+      body: JSON.stringify({ message: "Letra salva com sucesso." }),
+    });
   } catch (err) {
-    return {
+    console.error("❌ Erro ao processar .docx:", err);
+    return resolve({
       statusCode: 500,
-      body: `Erro ao processar .docx: ${err.message}`,
-    };
+      body: `Erro ao processar: ${err.message}`,
+    });
   }
-};
+});
