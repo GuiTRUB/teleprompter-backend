@@ -1,3 +1,4 @@
+
 const fs = require("fs");
 const multiparty = require("multiparty");
 const mammoth = require("mammoth");
@@ -70,7 +71,6 @@ exports.handler = async (event) => {
     readable.push(buffer);
     readable.push(null);
 
-    // 🔧 Removido 'content-length', mantido apenas o necessário
     const rawHeaders = Object.entries(event.headers || {}).reduce((acc, [key, val]) => {
       acc[key.toLowerCase()] = val;
       return acc;

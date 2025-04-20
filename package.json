@@ -1,7 +1,7 @@
+
 {
-  "name": "teleprompter-functions",
   "dependencies": {
-    "mammoth": "^1.6.0",
+    "mammoth": "^1.4.2",
     "multiparty": "^4.2.2"
   }
 }
