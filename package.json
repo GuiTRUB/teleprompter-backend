@@ -1,7 +1,6 @@
-
 {
   "dependencies": {
-    "mammoth": "^1.4.2",
-    "multiparty": "^4.2.2"
+    "formidable": "^3.5.2",
+    "mammoth": "^1.4.2"
   }
 }
